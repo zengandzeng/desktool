@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桌签在线 (自由蓝 V3.0)</title>
+    <!-- 引入外部资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 引入SheetJS库用于解析Excel文件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #f5f7fa;
+        }
+        .brand-header {
+            background: linear-gradient(90deg, #1e40af 0%, #3b82f6 100%);
+            padding: 1rem 2rem;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .card {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-radius: 0.5rem;
+            background-color: white;
+        }
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: 2px solid #93c5fd;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+        }
+        .btn-secondary {
+            background: linear-gradient(90deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            border: 2px solid #4ade80;
+        }
+        .btn-disabled {
+            background: linear-gradient(90deg, #9ca3af 0%, #6b7280 100%);
+            color: white;
+            cursor: not-allowed;
+            border: 2px solid #d1d5db;
+        }
+        .step-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 0.75rem;
+        }
+        #bg-preview-canvas {
+            cursor: crosshair;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .download-single-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .card-preview-wrapper:hover .download-single-btn {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+    <!-- 顶部品牌栏 -->
+    <div class="flex flex-col w-full">
+        <!-- 蓝色横幅 -->
+        <div class="bg-gradient-to-r from-blue-700 to-blue-900 py-4 px-6">
+            <div class="flex justify-between items-center max-w-7xl mx-auto">
+                <!-- 左侧logo位置 -->
+                <img src="自由蓝-logo-横板英文.png" alt="自由蓝Logo" class="h-10">
+
+            </div>
+        </div>
+        
+
+        
+
+        
+
+    </div>
+
+    <!-- 主体容器 -->
+    <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-xl border border-gray-200">
+        <style>
+            /* 字体选择器样式 */
+            .font-section {
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            
+            .font-item {
+                font-size: 0.875rem;
+                line-height: 1.5;
+            }
+            
+            .font-dropdown {
+                scrollbar-width: thin;
+                scrollbar-color: #cbd5e0 #f1f5f9;
+            }
+            
+            .font-dropdown::-webkit-scrollbar {
+                width: 6px;
+            }
+            
+            .font-dropdown::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 3px;
+            }
+            
+            .font-dropdown::-webkit-scrollbar-thumb {
+                background: #cbd5e0;
+                border-radius: 3px;
+            }
+            
+            .font-dropdown::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+        </style>
+        <!-- 页头 -->
+        <header class="border-b-2 border-gray-200 pb-4 mb-6 relative">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">桌签在线 (自由蓝 V3.0)</h1>
+            <p class="text-gray-600 mt-2 text-sm">版权©自由蓝设计工作室   微信：withzhzhzh</p>
+            <!-- 使用教程按钮 -->
+            <button id="tutorial-btn" class="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-medium rounded-full">使用教程</button>
+        </header>
+
+        <!-- 左右分栏布局 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- 左侧：参数设置区 -->
+            <div class="lg:col-span-1 space-y-4">
+                <!-- 步骤1: 上传背景图 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <div class="flex items-center text-blue-800 font-bold mb-2">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs mr-2">1</span>
+                        <span>上传背景图</span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-3">单张模式: 上传任意尺寸卡片。A4三折模式: 请上传"单半张"卡片背景 (建议 21x9.9cm 比例)。</p>
+                    <div class="mb-3">
+                        <label for="bg-upload" class="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer inline-block border border-gray-100 hover:border border-gray-200 transition-shadow duration-300">选择文件</label>
+                        <input type="file" id="bg-upload" accept="image/*" class="hidden">
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="clear-bg-btn" class="clear-btn w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold disabled:bg-white disabled:text-gray-300 enabled:bg-red-500 enabled:text-white hover:bg-red-600 transition-colors duration-300" disabled>×</button>
+                    </div>
+                </div>
+
+                <!-- 步骤2: 生成模式 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <div class="flex items-center text-blue-800 font-bold mb-2">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs mr-2">2</span>
+                        <span>选择生成模式</span>
+                    </div>
+                    <div class="mt-2 space-y-2">
+                        <div class="relative">
+                            <input type="radio" id="mode-single" name="generation-mode" value="single" class="hidden peer" checked>
+                            <label for="mode-single" class="block p-3 rounded-lg cursor-pointer bg-white border border-gray-100 hover:border border-gray-200 transition-shadow duration-300 peer-checked:bg-blue-700 peer-checked:text-white transition-colors flex items-center justify-between">
+                                <div class="flex-1 text-center">
+                                    <span class="font-semibold">单张模式</span>
+                                    <span class="text-xs block mt-1">按原图尺寸生成。</span>
+                                </div>
+                                <button id="schematic-single-btn" class="ml-3 px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full hover:bg-blue-600 transition-colors">示意图</button>
+                            </label>
+                        </div>
+                        <div class="relative">
+                            <input type="radio" id="mode-symmetric" name="generation-mode" value="symmetric" class="hidden peer">
+                            <label for="mode-symmetric" class="block p-3 rounded-lg cursor-pointer bg-white border border-gray-100 hover:border border-gray-200 transition-shadow duration-300 peer-checked:bg-blue-700 peer-checked:text-white transition-colors flex items-center justify-between">
+                                <div class="flex-1 text-center">
+                                    <span class="font-semibold">A4三折模式</span>
+                                    <span class="text-xs block mt-1">自动合成A4页面</span>
+                                </div>
+                                <button id="schematic-symmetric-btn" class="ml-3 px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full hover:bg-blue-600 transition-colors">示意图</button>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤3: 输入名单 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <div class="flex items-center text-blue-800 font-bold mb-2">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs mr-2">3</span>
+                        <span>输入名单</span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-3">姓名和职称每行一一对应，职称可留空。</p>
+                    <div class="mb-3">
+                        <label for="list-upload" class="bg-green-600 text-white px-4 py-2 rounded cursor-pointer inline-block border border-gray-100 hover:border border-gray-200 transition-shadow duration-300">选择文件</label>
+                        <input type="file" id="list-upload" accept=".xlsx,.xls,.csv" class="hidden">
+                        <div class="flex justify-end mt-1">
+                            <button id="clear-list-btn" class="clear-btn w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold disabled:bg-white disabled:text-gray-300 enabled:bg-red-500 enabled:text-white hover:bg-red-600 transition-colors duration-300" disabled>×</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="name-list" class="text-sm font-medium block mb-1 text-gray-600">姓名名单</label>
+                        <textarea id="name-list" rows="3" placeholder="张三&#10;李四&#10;王五" class="w-full p-2 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300 text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label for="title-list" class="text-sm font-medium block mb-1 text-gray-600">职称名单 (可留空)</label>
+                        <textarea id="title-list" rows="3" placeholder="CEO&#10;市场部经理" class="w-full p-2 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300 text-sm"></textarea>
+                    </div>
+                </div>
+
+                <!-- 步骤4: 姓名设置 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <div class="flex items-center text-blue-800 font-bold mb-2">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs mr-2">4</span>
+                        <span>姓名设置</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <label for="font-size" class="block mb-1 text-gray-600">字号 (px)</label>
+                            <input type="number" id="font-size" value="300" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                        <div>
+                            <label for="font-color" class="block mb-1 text-gray-600">颜色</label>
+                            <input type="color" id="font-color" value="#000000" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                        <div>
+                            <label for="pos-x" class="block mb-1 text-gray-600">X 坐标</label>
+                            <input type="number" id="pos-x" value="1050" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                        <div>
+                            <label for="pos-y" class="block mb-1 text-gray-600">Y 坐标</label>
+                            <input type="number" id="pos-y" value="420" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label for="font-family" class="text-sm block mb-1 text-gray-600">字体</label>
+                        <div class="relative font-select-container">
+                            <input type="text" id="font-family" value="阿里妈妈数黑体" placeholder="例如: SimHei, sans-serif" class="w-full p-1 rounded border border-gray-100 focus:border-blue-500 transition-all duration-300 text-sm pr-10">
+                            <button type="button" class="font-toggle-btn absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">▼</button>
+                            <div class="font-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 max-h-60 overflow-y-auto hidden">
+                                <!-- 阿里妈妈数黑体 -->
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">阿里妈妈数黑体</div>
+                                
+                                <!-- 微软雅黑系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">微软雅黑系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei Bold</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei UI Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei UI</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei UI Bold</div>
+                                
+                                <!-- 思源黑体系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">思源黑体系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Source Han Sans SC Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Source Han Sans SC Normal</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Source Han Sans SC Bold</div>
+                                
+                                <!-- 阿里巴巴普惠体系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">阿里巴巴普惠体系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Alibaba PuHuiTi Medium</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Alibaba PuHuiTi Bold</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Alibaba PuHuiTi Heavy</div>
+                                
+                                <!-- 其他单字体 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">其他字体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">得意黑</div>
+                                
+
+                                
+                                <!-- HarmonyOS Sans系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">HarmonyOS Sans系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">HarmonyOS Sans Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">HarmonyOS Sans Regular</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">HarmonyOS Sans Bold</div>
+                                
+                                <!-- MiSans系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">MiSans系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Regular</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Medium</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Bold</div>
+                                
+                                <!-- 其他单字体 -->
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors mt-2">字魂扁桃体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">标小智无界黑</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">创客贴金刚体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">优设标题黑</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">三极泼墨体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">字体圈欣意冠黑体</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤5: 职称设置 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <div class="flex items-center text-blue-800 font-bold mb-2">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs mr-2">5</span>
+                        <span>职称设置</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <label for="title-font-size" class="block mb-1 text-gray-600">字号 (px)</label>
+                            <input type="number" id="title-font-size" value="120" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                        <div>
+                            <label for="title-font-color" class="block mb-1 text-gray-600">颜色</label>
+                            <input type="color" id="title-font-color" value="#000000" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                        <div>
+                            <label for="title-pos-x" class="block mb-1 text-gray-600">X 坐标</label>
+                            <input type="number" id="title-pos-x" value="1047" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                        <div>
+                            <label for="title-pos-y" class="block mb-1 text-gray-600">Y 坐标</label>
+                            <input type="number" id="title-pos-y" value="701" class="w-full p-1 rounded border border-gray-100 focus:border border-gray-100 transition-shadow duration-300">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label for="title-font-family" class="text-sm block mb-1 text-gray-600">字体</label>
+                        <div class="relative font-select-container">
+                            <input type="text" id="title-font-family" value="MiSans Light" placeholder="例如: SimHei, sans-serif" class="w-full p-1 rounded border border-gray-100 focus:border-blue-500 transition-all duration-300 text-sm pr-10">
+                            <button type="button" class="font-toggle-btn absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">▼</button>
+                            <div class="font-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 max-h-60 overflow-y-auto hidden">
+                                <!-- 阿里妈妈数黑体 -->
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">阿里妈妈数黑体</div>
+                                
+                                <!-- 微软雅黑系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">微软雅黑系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei Bold</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei UI Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei UI</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Microsoft YaHei UI Bold</div>
+                                
+                                <!-- 思源黑体系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">思源黑体系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Source Han Sans SC Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Source Han Sans SC Normal</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Source Han Sans SC Bold</div>
+                                
+                                <!-- 阿里巴巴普惠体系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">阿里巴巴普惠体系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Alibaba PuHuiTi Medium</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Alibaba PuHuiTi Bold</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">Alibaba PuHuiTi Heavy</div>
+                                
+                                <!-- 其他单字体 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">其他字体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">得意黑</div>
+                                
+
+                                
+                                <!-- HarmonyOS Sans系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">HarmonyOS Sans系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">HarmonyOS Sans Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">HarmonyOS Sans Regular</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">HarmonyOS Sans Bold</div>
+                                
+                                <!-- MiSans系列 -->
+                                <div class="font-section px-3 py-1 text-gray-600 font-medium border-t border-gray-100 mt-2">MiSans系列</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Light</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Regular</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Medium</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors pl-6">MiSans Bold</div>
+                                
+                                <!-- 其他单字体 -->
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors mt-2">字魂扁桃体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">标小智无界黑</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">创客贴金刚体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">优设标题黑</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">三极泼墨体</div>
+                                <div class="font-item px-3 py-1 cursor-pointer hover:bg-blue-50 transition-colors">字体圈欣意冠黑体</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览与下载区 -->
+            <div class="lg:col-span-2 space-y-4">
+                <!-- 实时预览 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <h3 class="font-bold text-blue-800 mb-2">实时定位预览</h3>
+                    <div class="bg-white rounded-lg p-4">
+                        <canvas id="bg-preview-canvas" class="w-full bg-gray-100 rounded-md object-contain border-2 border-dashed border-gray-300"></canvas>
+                    </div>
+                    <p id="canvas-tip" class="text-xs text-gray-500 mt-2 hidden">提示: "A4三折模式"下, 请点击 <b>中间的卡片</b> 来定位。</p>
+                </div>
+                
+                <!-- 生成与下载 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <div class="flex items-center text-blue-800 font-bold mb-2">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs mr-2">6</span>
+                        <span>生成与下载</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <button id="generate-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded cursor-pointer border border-gray-100 hover:border border-gray-200 transition-all duration-300 disabled:opacity-50" disabled>点击生成预览</button>
+                        <button id="download-zip-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded cursor-pointer border border-gray-100 hover:border border-gray-200 transition-all duration-300 disabled:opacity-50" disabled>批量下载JPG (ZIP)</button>
+                        <button id="download-pdf-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded cursor-pointer border border-gray-100 hover:border border-gray-200 transition-all duration-300 disabled:opacity-50" disabled>批量下载PDF</button>
+                    </div>
+                    <p id="status-msg" class="text-blue-600 font-semibold mt-3 h-4 text-xs"></p>
+                </div>
+
+                <!-- 结果预览 -->
+                <div class="rounded-lg p-4 border border-gray-100 bg-white shadow-md hover:shadow-lg hover:border border-gray-200 transition-all duration-300">
+                    <h3 class="font-bold text-blue-800 mb-2">生成结果预览 (最多12个)</h3>
+                    <div id="preview-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 bg-white p-3 rounded-lg border border-gray-100">
+                        <p id="preview-placeholder" class="text-gray-500 col-span-full text-center text-xs">点击 "生成预览" 按钮后将在此处显示结果。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模式示意图模态框 -->
+    <div id="schematic-modal" class="modal-overlay">
+        <div class="bg-white p-5 rounded-lg shadow-xl max-w-2xl w-full mx-4 relative">
+            <button id="close-modal-btn" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold p-1">&times;</button>
+            <h3 id="modal-title" class="text-lg font-bold mb-3">模式示意图</h3>
+            <img id="modal-image" src="" alt="模式示意图" class="w-full h-auto rounded-lg border border-gray-100">
+            <p id="modal-caption" class="text-xs text-gray-500 mt-2 text-center"></p>
+        </div>
+    </div>
+
+    <!-- 核心功能脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 元素获取
+            const bgUpload = document.getElementById('bg-upload');
+            const listUpload = document.getElementById('list-upload');
+            const nameList = document.getElementById('name-list');
+            const titleList = document.getElementById('title-list');
+            const fontSizeInput = document.getElementById('font-size');
+            const fontColorInput = document.getElementById('font-color');
+            const fontFamilyInput = document.getElementById('font-family');
+            const posXInput = document.getElementById('pos-x');
+            const posYInput = document.getElementById('pos-y');
+            const titleFontSizeInput = document.getElementById('title-font-size');
+            const titleFontColorInput = document.getElementById('title-font-color');
+            const titleFontFamilyInput = document.getElementById('title-font-family');
+            const titlePosXInput = document.getElementById('title-pos-x');
+            const titlePosYInput = document.getElementById('title-pos-y');
+            const previewCanvas = document.getElementById('bg-preview-canvas');
+            const previewCtx = previewCanvas.getContext('2d');
+            const generateBtn = document.getElementById('generate-btn');
+            const downloadZipBtn = document.getElementById('download-zip-btn');
+            const downloadPdfBtn = document.getElementById('download-pdf-btn');
+            const statusMsg = document.getElementById('status-msg');
+            const previewContainer = document.getElementById('preview-container');
+            const clearBgBtn = document.getElementById('clear-bg-btn');
+            const clearListBtn = document.getElementById('clear-list-btn');
+            const schematicSingleBtn = document.getElementById('schematic-single-btn');
+            const schematicSymmetricBtn = document.getElementById('schematic-symmetric-btn');
+            const tutorialBtn = document.getElementById('tutorial-btn');
+            const schematicModal = document.getElementById('schematic-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+
+            // 常量定义
+            const A4_PIXEL_WIDTH = 2100;
+            const A4_PIXEL_SLOT_HEIGHT = 990;
+            const A4_PIXEL_HEIGHT = 2970;
+            const IMAGE_MIME_TYPE = 'image/jpeg';
+
+            // 全局变量
+            let bgImage = null;
+            let generatedData = [];
+
+            // 初始画布设置
+            function setInitialCanvas() {
+                previewCanvas.width = previewCanvas.parentElement.clientWidth;
+                previewCanvas.height = 250;
+                previewCtx.fillStyle = '#6b7280';
+                previewCtx.font = '16px "Microsoft YaHei", sans-serif';
+                previewCtx.textAlign = 'center';
+                previewCtx.textBaseline = 'middle';
+                previewCtx.fillText('↑ 请上传背景图以启用预览', previewCanvas.width / 2, previewCanvas.height / 2);
+            }
+            setInitialCanvas();
+
+            // 背景图上传处理
+            bgUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    bgImage = new Image();
+                    bgImage.onload = () => {
+                        resizeCanvasAndRedraw();
+                        generateBtn.disabled = false;
+                        generateBtn.classList.remove('btn-disabled');
+                        generateBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                        generateBtn.classList.add('bg-blue-400', 'text-white');
+                        statusMsg.textContent = '背景图已加载，请调整设置。';
+                        document.getElementById('canvas-tip').style.display = 'block';
+                        clearBgBtn.disabled = false;
+                    };
+                    bgImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // 清除背景图
+            clearBgBtn.addEventListener('click', () => {
+                bgUpload.value = '';
+                bgImage = null;
+                clearBgBtn.disabled = true;
+                setInitialCanvas();
+                generateBtn.disabled = true;
+                generateBtn.classList.add('btn-disabled');
+                generateBtn.classList.remove('bg-blue-400', 'text-white');
+                generateBtn.classList.add('bg-gray-200', 'text-gray-700');
+                downloadZipBtn.disabled = true;
+                downloadPdfBtn.disabled = true;
+                downloadZipBtn.classList.add('btn-disabled');
+                downloadPdfBtn.classList.add('btn-disabled');
+                downloadZipBtn.classList.remove('bg-blue-400', 'text-white');
+                downloadZipBtn.classList.add('bg-gray-200', 'text-gray-700');
+                downloadPdfBtn.classList.remove('bg-blue-400', 'text-white');
+                downloadPdfBtn.classList.add('bg-gray-200', 'text-gray-700');
+                statusMsg.textContent = '背景图已清除。';
+                document.getElementById('canvas-tip').style.display = 'none';
+            });
+
+            // 名单上传处理
+            listUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                statusMsg.textContent = '正在读取名单文件...';
+                
+                // 检查文件类型
+                const isCSV = file.name.endsWith('.csv');
+                const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+                
+                if (isCSV) {
+                    // CSV文件处理
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = event.target.result;
+                            let names = [];
+                            let titles = [];
+                            
+                            const rows = data.split('\n').filter(row => row.trim());
+                            for (const row of rows) {
+                                const [name, title] = row.split(',').map(cell => cell.trim());
+                                if (name) {
+                                    names.push(name);
+                                    titles.push(title || '');
+                                }
+                            }
+                            
+                            // 添加序号前缀
+                            const numberedNames = names.map((name, index) => `${index + 1}. ${name}`);
+                            const numberedTitles = titles.map((title, index) => `${index + 1}. ${title}`);
+                            
+                            nameList.value = numberedNames.join('\n');
+                            titleList.value = numberedTitles.join('\n');
+                            statusMsg.textContent = `名单已导入，共 ${names.length} 条记录。`;
+                            clearListBtn.disabled = false;
+                        } catch (error) {
+                            statusMsg.textContent = '读取名单失败: ' + error.message;
+                        }
+                    };
+                    reader.readAsText(file);
+                } else if (isExcel) {
+                    // Excel文件处理
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = new Uint8Array(event.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                            
+                            let names = [];
+                            let titles = [];
+                            
+                            // 处理Excel数据，假设第一列是姓名，第二列是职称
+                            for (const row of jsonData) {
+                                if (row && row.length > 0) {
+                                    const name = String(row[0] || '').trim();
+                                    const title = String(row[1] || '').trim();
+                                    if (name) {
+                                        names.push(name);
+                                        titles.push(title);
+                                    }
+                                }
+                            }
+                            
+                            // 添加序号前缀
+                            const numberedNames = names.map((name, index) => `${index + 1}. ${name}`);
+                            const numberedTitles = titles.map((title, index) => `${index + 1}. ${title}`);
+                            
+                            nameList.value = numberedNames.join('\n');
+                            titleList.value = numberedTitles.join('\n');
+                            statusMsg.textContent = `名单已导入，共 ${names.length} 条记录。`;
+                            clearListBtn.disabled = false;
+                        } catch (error) {
+                            statusMsg.textContent = '读取Excel文件失败: ' + error.message;
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    statusMsg.textContent = '仅支持CSV、XLSX、XLS格式，请选择正确的文件。';
+                }
+            });
+
+            // 清除名单
+            clearListBtn.addEventListener('click', () => {
+                listUpload.value = '';
+                nameList.value = '';
+                titleList.value = '';
+                clearListBtn.disabled = true;
+                statusMsg.textContent = '名单已清除。';
+            });
+            
+            // 为文本框添加自动序号功能
+            function addNumberingToTextarea(textarea) {
+                const lines = textarea.value.split('\n');
+                const numberedLines = lines.map((line, index) => {
+                    // 移除已有的序号前缀
+                    const cleanedLine = line.replace(/^\d+\.\s*/, '').trim();
+                    if (cleanedLine) {
+                        return `${index + 1}. ${cleanedLine}`;
+                    } else {
+                        return '';
+                    }
+                }).filter(line => line.trim() !== '');
+                
+                textarea.value = numberedLines.join('\n');
+            }
+            
+            // 为姓名和职称文本框添加input事件监听器
+            [nameList, titleList].forEach(textarea => {
+                textarea.addEventListener('blur', () => {
+                    addNumberingToTextarea(textarea);
+                });
+            });
+            
+            // 添加文字拖拽功能
+            let isDragging = false;
+            let draggingType = null; // 'name' or 'title'
+            let startX, startY;
+            let initialNameX, initialNameY;
+            let initialTitleX, initialTitleY;
+            
+            // 统一处理鼠标坐标转换的函数
+            function getCanvasCoordinates(e) {
+                const rect = previewCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 计算缩放比例：canvas实际像素 / CSS显示像素
+                const scaleX = previewCanvas.width / rect.width;
+                const scaleY = previewCanvas.height / rect.height;
+                
+                return {
+                    canvasX: mouseX * scaleX,
+                    canvasY: mouseY * scaleY
+                };
+            }
+            
+            // 添加鼠标悬停效果，当鼠标悬停在文字区域时显示pointer光标
+            previewCanvas.addEventListener('mousemove', (e) => {
+                if (!bgImage || isDragging) return;
+                
+                const { canvasX, canvasY } = getCanvasCoordinates(e);
+                const settings = getSettings();
+                
+                // 获取文字位置
+                const nameX = settings.name.x;
+                const nameY = settings.name.y;
+                const titleX = settings.title.x;
+                const titleY = settings.title.y;
+                
+                // 使用合理的检测范围，确保姓名和职称区域不会相互覆盖
+                const nameWidth = 400; // 姓名区域宽度，固定合理值
+                const nameHeight = 200; // 姓名区域高度，固定合理值
+                const titleWidth = 350; // 职称区域宽度，固定合理值
+                const titleHeight = 120; // 职称区域高度，固定合理值
+                
+                let isOverName = false;
+                let isOverTitle = false;
+                
+                if (settings.mode === 'symmetric') {
+                    // A4三折模式：只允许拖动中间卡片的文字
+                    const middleCardY = A4_PIXEL_SLOT_HEIGHT; // 中间卡片的起始Y坐标
+                    const middleCardHeight = A4_PIXEL_SLOT_HEIGHT; // 中间卡片的高度
+                    
+                    // 中间卡片中文字的实际Y坐标
+                    const actualNameY = middleCardY + nameY;
+                    const actualTitleY = middleCardY + titleY;
+                    
+                    // 检查鼠标是否在中间卡片范围内，同时扩大检测范围
+                    const middleMinY = middleCardY - nameHeight/2;
+                    const middleMaxY = middleCardY + middleCardHeight + nameHeight/2;
+                    
+                    if (canvasY >= middleMinY && canvasY <= middleMaxY) {
+                        // 检查是否悬停在姓名区域 - 使用超大检测范围
+                        isOverName = (canvasX >= nameX - nameWidth/2 && canvasX <= nameX + nameWidth/2 && 
+                                     canvasY >= actualNameY - nameHeight/2 && canvasY <= actualNameY + nameHeight/2);
+                        
+                        // 检查是否悬停在职称区域 - 使用超大检测范围
+                        isOverTitle = (canvasX >= titleX - titleWidth/2 && canvasX <= titleX + titleWidth/2 && 
+                                      canvasY >= actualTitleY - titleHeight/2 && canvasY <= actualTitleY + titleHeight/2);
+                    }
+                } else {
+                    // 单张模式 - 使用超大检测范围
+                    isOverName = (canvasX >= nameX - nameWidth/2 && canvasX <= nameX + nameWidth/2 && 
+                                 canvasY >= nameY - nameHeight/2 && canvasY <= nameY + nameHeight/2);
+                    
+                    isOverTitle = (canvasX >= titleX - titleWidth/2 && canvasX <= titleX + titleWidth/2 && 
+                                  canvasY >= titleY - titleHeight/2 && canvasY <= titleY + titleHeight/2);
+                }
+                
+                // 更新鼠标样式
+                if (isOverName || isOverTitle) {
+                    previewCanvas.style.cursor = 'pointer';
+                } else {
+                    previewCanvas.style.cursor = 'crosshair';
+                }
+            });
+            
+            // 鼠标按下事件
+            previewCanvas.addEventListener('mousedown', (e) => {
+                if (!bgImage) return;
+                
+                const { canvasX, canvasY } = getCanvasCoordinates(e);
+                const settings = getSettings();
+                
+                // 获取文字位置
+                const nameX = settings.name.x;
+                const nameY = settings.name.y;
+                const titleX = settings.title.x;
+                const titleY = settings.title.y;
+                
+                // 使用合理的检测范围，确保姓名和职称区域不会相互覆盖
+                const nameWidth = 400; // 姓名区域宽度，固定合理值
+                const nameHeight = 200; // 姓名区域高度，固定合理值
+                const titleWidth = 350; // 职称区域宽度，固定合理值
+                const titleHeight = 120; // 职称区域高度，固定合理值
+                
+                if (settings.mode === 'symmetric') {
+                    // A4三折模式：只允许拖动中间卡片的文字
+                    const middleCardY = A4_PIXEL_SLOT_HEIGHT; // 中间卡片的起始Y坐标
+                    const middleCardHeight = A4_PIXEL_SLOT_HEIGHT; // 中间卡片的高度
+                    
+                    // 中间卡片中文字的实际Y坐标
+                    const actualNameY = middleCardY + nameY;
+                    const actualTitleY = middleCardY + titleY;
+                    
+                    // 扩大中间卡片检测范围，确保容易点击
+                    const middleMinY = middleCardY - nameHeight/2;
+                    const middleMaxY = middleCardY + middleCardHeight + nameHeight/2;
+                    
+                    if (canvasY >= middleMinY && canvasY <= middleMaxY) {
+                        // 检查是否点击了姓名区域 - 使用超大检测范围
+                        if (canvasX >= nameX - nameWidth/2 && canvasX <= nameX + nameWidth/2 && 
+                            canvasY >= actualNameY - nameHeight/2 && canvasY <= actualNameY + nameHeight/2) {
+                            isDragging = true;
+                            draggingType = 'name';
+                            startX = canvasX;
+                            startY = canvasY;
+                            initialNameX = nameX;
+                            initialNameY = nameY;
+                            previewCanvas.style.cursor = 'grabbing';
+                            return; // 避免重复触发
+                        }
+                        // 检查是否点击了职称区域 - 使用超大检测范围
+                        if (canvasX >= titleX - titleWidth/2 && canvasX <= titleX + titleWidth/2 && 
+                            canvasY >= actualTitleY - titleHeight/2 && canvasY <= actualTitleY + titleHeight/2) {
+                            isDragging = true;
+                            draggingType = 'title';
+                            startX = canvasX;
+                            startY = canvasY;
+                            initialTitleX = titleX;
+                            initialTitleY = titleY;
+                            previewCanvas.style.cursor = 'grabbing';
+                            return; // 避免重复触发
+                        }
+                    }
+                } else {
+                    // 单张模式 - 使用超大检测范围
+                    if (canvasX >= nameX - nameWidth/2 && canvasX <= nameX + nameWidth/2 && 
+                        canvasY >= nameY - nameHeight/2 && canvasY <= nameY + nameHeight/2) {
+                        isDragging = true;
+                        draggingType = 'name';
+                        startX = canvasX;
+                        startY = canvasY;
+                        initialNameX = nameX;
+                        initialNameY = nameY;
+                        previewCanvas.style.cursor = 'grabbing';
+                        return; // 避免重复触发
+                    }
+                    if (canvasX >= titleX - titleWidth/2 && canvasX <= titleX + titleWidth/2 && 
+                        canvasY >= titleY - titleHeight/2 && canvasY <= titleY + titleHeight/2) {
+                        isDragging = true;
+                        draggingType = 'title';
+                        startX = canvasX;
+                        startY = canvasY;
+                        initialTitleX = titleX;
+                        initialTitleY = titleY;
+                        previewCanvas.style.cursor = 'grabbing';
+                        return; // 避免重复触发
+                    }
+                }
+            });
+            
+            // 鼠标拖动事件
+            previewCanvas.addEventListener('mousemove', (e) => {
+                if (!isDragging || !bgImage) return;
+                
+                const { canvasX, canvasY } = getCanvasCoordinates(e);
+                const settings = getSettings();
+                
+                // 计算偏移量
+                const offsetX = canvasX - startX;
+                const offsetY = canvasY - startY;
+                
+                if (settings.mode === 'symmetric') {
+                    // A4三折模式：限制文字只能在中间卡片内
+                    const middleCardHeight = A4_PIXEL_SLOT_HEIGHT; // 中间卡片的高度
+                    
+                    if (draggingType === 'name') {
+                        // 更新姓名位置，允许在整个画布范围内拖动
+                        let newNameX = initialNameX + offsetX;
+                        let newNameY = initialNameY + offsetY;
+                        
+                        // 限制姓名在合理范围内，但不严格限制在中间卡片内
+                        newNameX = Math.max(0, Math.min(newNameX, A4_PIXEL_WIDTH));
+                        newNameY = Math.max(0, Math.min(newNameY, middleCardHeight));
+                        
+                        posXInput.value = Math.round(newNameX);
+                        posYInput.value = Math.round(newNameY);
+                    } else if (draggingType === 'title') {
+                        // 更新职称位置，允许在整个画布范围内拖动
+                        let newTitleX = initialTitleX + offsetX;
+                        let newTitleY = initialTitleY + offsetY;
+                        
+                        // 限制职称在合理范围内，但不严格限制在中间卡片内
+                        newTitleX = Math.max(0, Math.min(newTitleX, A4_PIXEL_WIDTH));
+                        newTitleY = Math.max(0, Math.min(newTitleY, middleCardHeight));
+                        
+                        titlePosXInput.value = Math.round(newTitleX);
+                        titlePosYInput.value = Math.round(newTitleY);
+                    }
+                } else {
+                    // 单张模式
+                    if (draggingType === 'name') {
+                        // 更新姓名位置
+                        const newNameX = initialNameX + offsetX;
+                        const newNameY = initialNameY + offsetY;
+                        
+                        posXInput.value = Math.round(newNameX);
+                        posYInput.value = Math.round(newNameY);
+                    } else if (draggingType === 'title') {
+                        // 更新职称位置
+                        const newTitleX = initialTitleX + offsetX;
+                        const newTitleY = initialTitleY + offsetY;
+                        
+                        titlePosXInput.value = Math.round(newTitleX);
+                        titlePosYInput.value = Math.round(newTitleY);
+                    }
+                }
+                
+                // 重新绘制预览，确保镜像文字同步更新
+                generatePreview();
+            });
+            
+            // 鼠标抬起事件
+            previewCanvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                draggingType = null;
+                previewCanvas.style.cursor = 'crosshair';
+            });
+            
+            // 鼠标离开canvas事件
+            previewCanvas.addEventListener('mouseleave', () => {
+                isDragging = false;
+                draggingType = null;
+                previewCanvas.style.cursor = 'crosshair';
+            });
+
+            // 获取当前设置
+            function getSettings() {
+                const mode = document.querySelector('input[name="generation-mode"]:checked').value;
+                
+                // 解析字体名称和粗细
+                function parseFontFamily(fullFontName) {
+                    // 常见字体粗细关键字（按长度排序，优先匹配长的）
+                    const weightKeywords = ['ExtraLight', 'SemiBold', 'ExtraBold', 'Light', 'Normal', 'Regular', 'Medium', 'Bold', 'Heavy', 'Thin', 'Black'];
+                    
+                    // 清理字体名称，移除可能的空格
+                    const cleanedFontName = fullFontName.trim();
+                    
+                    // 查找字体名称中的重量关键字
+                    let family = cleanedFontName;
+                    let weight = 'normal';
+                    
+                    // 尝试匹配重量关键字
+                    for (const keyword of weightKeywords) {
+                        const regex = new RegExp(`\\s*${keyword}$`, 'i');
+                        if (regex.test(family)) {
+                            // 提取重量关键字并映射到canvas支持的数值
+                            const weightMap = {
+                                'ExtraLight': '100',
+                                'Thin': '100',
+                                'Light': '300',
+                                'Normal': '400',
+                                'Regular': '400',
+                                'Medium': '500',
+                                'SemiBold': '600',
+                                'Bold': '700',
+                                'ExtraBold': '800',
+                                'Heavy': '900',
+                                'Black': '900'
+                            };
+                            
+                            weight = weightMap[keyword] || '400';
+                            family = family.replace(regex, '').trim();
+                            break;
+                        }
+                    }
+                    
+                    // 返回解析结果，使用完整字体名称作为family
+                    return {
+                        family: `${cleanedFontName}, "Microsoft YaHei", "SimHei", sans-serif`,
+                        weight: weight
+                    };
+                }
+                
+                const nameFont = parseFontFamily(fontFamilyInput.value);
+                const titleFont = parseFontFamily(titleFontFamilyInput.value);
+                
+                return {
+                    mode,
+                    name: {
+                        size: parseInt(fontSizeInput.value),
+                        color: fontColorInput.value,
+                        family: nameFont.family,
+                        weight: nameFont.weight,
+                        x: parseInt(posXInput.value),
+                        y: parseInt(posYInput.value)
+                    },
+                    title: {
+                        size: parseInt(titleFontSizeInput.value),
+                        color: titleFontColorInput.value,
+                        family: titleFont.family,
+                        weight: titleFont.weight,
+                        x: parseInt(titlePosXInput.value),
+                        y: parseInt(titlePosYInput.value)
+                    }
+                };
+            }
+
+            // 画布重置与重绘
+            function resizeCanvasAndRedraw() {
+                if (!bgImage) return;
+                const mode = document.querySelector('input[name="generation-mode"]:checked').value;
+                
+                // 计算容器宽度
+                const containerWidth = previewCanvas.parentElement.clientWidth;
+                
+                if (mode === 'symmetric') {
+                    // A4三折模式：显示完整的A4三折页样式，高度自适应
+                    // 缩小5%并保持居中
+                    const scale = Math.min(containerWidth / A4_PIXEL_WIDTH, 1) * 0.95; // 缩小5%
+                    const scaledWidth = A4_PIXEL_WIDTH * scale;
+                    const scaledHeight = A4_PIXEL_HEIGHT * scale;
+                    
+                    previewCanvas.width = A4_PIXEL_WIDTH;
+                    previewCanvas.height = A4_PIXEL_HEIGHT;
+                    
+                    // 设置canvas的CSS样式，按比例缩放显示，缩小5%并居中
+                    previewCanvas.style.width = `${scaledWidth}px`;
+                    previewCanvas.style.height = `${scaledHeight}px`;
+                    previewCanvas.style.margin = '0 auto'; // 居中显示
+                    previewCanvas.style.display = 'block'; // 确保可以居中
+                    
+                    // 为A4三折模式添加底部阴影
+                    previewCanvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                    previewCanvas.style.borderRadius = '0.375rem';
+                    
+                    posXInput.value = Math.round(A4_PIXEL_WIDTH / 2);
+                    posYInput.value = Math.round(A4_PIXEL_SLOT_HEIGHT / 2);
+                    titlePosXInput.value = Math.round(A4_PIXEL_WIDTH / 2);
+                    titlePosYInput.value = Math.round(A4_PIXEL_SLOT_HEIGHT / 2 + 150);
+                } else {
+                    // 单张模式：放大到红框位置，占据更大空间
+                    const newWidth = containerWidth; // 铺满容器宽度
+                    
+                    // 计算缩放比例，让预览图占据更大高度
+                    const targetHeight = 400; // 目标高度，覆盖更多空间
+                    const scale = Math.max(newWidth / bgImage.width, targetHeight / bgImage.height);
+                    
+                    const newHeight = bgImage.height * scale;
+                    
+                    // 保持canvas的实际尺寸为原始图片尺寸，通过CSS进行缩放
+                    previewCanvas.width = bgImage.width;
+                    previewCanvas.height = bgImage.height;
+                    
+                    // 设置canvas的CSS样式，放大显示，覆盖更大空间
+                    previewCanvas.style.width = `${newWidth}px`;
+                    previewCanvas.style.height = `${newHeight}px`;
+                    previewCanvas.style.margin = '0 auto'; // 居中显示
+                    previewCanvas.style.display = 'block'; // 确保可以居中
+                    
+                    // 移除阴影，单张模式不需要阴影
+                    previewCanvas.style.boxShadow = 'none';
+                    previewCanvas.style.borderRadius = '0.375rem';
+                    
+                    // 位置输入框使用原始图片的中心位置
+                    posXInput.value = Math.round(bgImage.width / 2);
+                    posYInput.value = Math.round(bgImage.height / 2);
+                    titlePosXInput.value = Math.round(bgImage.width / 2);
+                    titlePosYInput.value = Math.round(bgImage.height / 2 + (bgImage.height * 0.1));
+                }
+                generatePreview();
+            }
+
+            // 绘制预览
+            function generatePreview() {
+                if (!bgImage) return;
+                
+                const settings = getSettings();
+                // 获取第一个姓名并移除序号前缀
+                const rawFirstName = nameList.value.split('\n')[0] || "示例姓名";
+                const firstName = rawFirstName.replace(/^\d+\.\s*/, '').trim() || "示例姓名";
+                // 获取第一个职称并移除序号前缀
+                const rawFirstTitle = titleList.value.split('\n')[0] || "示例职称";
+                const firstTitle = rawFirstTitle.replace(/^\d+\.\s*/, '').trim() || "示例职称";
+                
+                previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+                
+                if (settings.mode === 'symmetric') {
+                    // A4三折模式
+                    previewCtx.fillStyle = '#FFFFFF';
+                    previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+                    
+                    // 中间正向背景
+                    previewCtx.drawImage(bgImage, 0, A4_PIXEL_SLOT_HEIGHT, A4_PIXEL_WIDTH, A4_PIXEL_SLOT_HEIGHT);
+                    
+                    // 中间文字
+                    const actualNameX = settings.name.x;
+                    const actualNameY = A4_PIXEL_SLOT_HEIGHT + settings.name.y;
+                    const actualTitleX = settings.title.x;
+                    const actualTitleY = A4_PIXEL_SLOT_HEIGHT + settings.title.y;
+                    
+                    // 先绘制职称（下方）
+                    if (firstTitle) {
+                        previewCtx.font = `${settings.title.weight} ${settings.title.size}px ${settings.title.family}`;
+                        previewCtx.fillStyle = settings.title.color;
+                        previewCtx.textAlign = 'center';
+                        previewCtx.textBaseline = 'middle';
+                        previewCtx.fillText(firstTitle, actualTitleX, actualTitleY);
+                    }
+                    
+                    // 后绘制姓名（上方）
+                    previewCtx.font = `${settings.name.weight} ${settings.name.size}px ${settings.name.family}`;
+                    previewCtx.fillStyle = settings.name.color;
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText(firstName, actualNameX, actualNameY);
+                    
+                    // 顶部镜像背景
+                    previewCtx.save();
+                    previewCtx.translate(A4_PIXEL_WIDTH / 2, A4_PIXEL_SLOT_HEIGHT / 2);
+                    previewCtx.rotate(Math.PI);
+                    previewCtx.drawImage(bgImage, -A4_PIXEL_WIDTH / 2, -A4_PIXEL_SLOT_HEIGHT / 2, A4_PIXEL_WIDTH, A4_PIXEL_SLOT_HEIGHT);
+                    
+                    // 计算镜像位置：相对于中间卡片的位置进行镜像
+                    // 中间卡片中文字的相对位置
+                    const relNameX = settings.name.x - A4_PIXEL_WIDTH / 2;
+                    const relNameY = settings.name.y - A4_PIXEL_SLOT_HEIGHT / 2;
+                    const relTitleX = settings.title.x - A4_PIXEL_WIDTH / 2;
+                    const relTitleY = settings.title.y - A4_PIXEL_SLOT_HEIGHT / 2;
+                    
+                    // 顶部镜像文字 - 与下方文字保持完全镜像
+                    // 先绘制镜像职称（下方）
+                    if (firstTitle) {
+                        previewCtx.font = `${settings.title.weight} ${settings.title.size}px ${settings.title.family}`;
+                        previewCtx.fillStyle = settings.title.color;
+                        previewCtx.textAlign = 'center';
+                        previewCtx.textBaseline = 'middle';
+                        previewCtx.fillText(firstTitle, relTitleX, relTitleY);
+                    }
+                    
+                    // 后绘制镜像姓名（上方）
+                    previewCtx.font = `${settings.name.weight} ${settings.name.size}px ${settings.name.family}`;
+                    previewCtx.fillStyle = settings.name.color;
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText(firstName, relNameX, relNameY);
+                    previewCtx.restore();
+                    
+                    // 添加定位辅助线 - 姓名
+                    previewCtx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; // 姓名辅助线为半透明红色
+                    previewCtx.lineWidth = 1;
+                    // 垂直线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(actualNameX, 0);
+                    previewCtx.lineTo(actualNameX, previewCanvas.height);
+                    previewCtx.stroke();
+                    // 水平线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(0, actualNameY);
+                    previewCtx.lineTo(previewCanvas.width, actualNameY);
+                    previewCtx.stroke();
+                    
+                    // 添加定位辅助线 - 职称
+                    if (firstTitle) {
+                        previewCtx.strokeStyle = 'rgba(0, 0, 255, 0.5)'; // 职称辅助线为半透明蓝色
+                        // 垂直线
+                        previewCtx.beginPath();
+                        previewCtx.moveTo(actualTitleX, 0);
+                        previewCtx.lineTo(actualTitleX, previewCanvas.height);
+                        previewCtx.stroke();
+                        // 水平线
+                        previewCtx.beginPath();
+                        previewCtx.moveTo(0, actualTitleY);
+                        previewCtx.lineTo(previewCanvas.width, actualTitleY);
+                        previewCtx.stroke();
+                    }
+                    
+                    // 添加固定的居中辅助线（比文字辅助线粗，颜色区分开）
+                    previewCtx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // 居中辅助线为半透明绿色
+                    previewCtx.lineWidth = 2; // 居中辅助线更粗
+                    // 整个画面的垂直居中辅助线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(previewCanvas.width / 2, 0);
+                    previewCtx.lineTo(previewCanvas.width / 2, previewCanvas.height);
+                    previewCtx.stroke();
+                    // 整个画面的水平居中辅助线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(0, previewCanvas.height / 2);
+                    previewCtx.lineTo(previewCanvas.width, previewCanvas.height / 2);
+                    previewCtx.stroke();
+                    // 中间卡片的水平居中辅助线（A4三折模式）
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(0, A4_PIXEL_SLOT_HEIGHT + A4_PIXEL_SLOT_HEIGHT / 2);
+                    previewCtx.lineTo(previewCanvas.width, A4_PIXEL_SLOT_HEIGHT + A4_PIXEL_SLOT_HEIGHT / 2);
+                    previewCtx.stroke();
+                } else {
+                    // 单张模式
+                    previewCtx.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height);
+                    
+                    // 先绘制职称（下方）
+                    if (firstTitle) {
+                        previewCtx.font = `${settings.title.size}px ${settings.title.family}`;
+                        previewCtx.fillStyle = settings.title.color;
+                        previewCtx.textAlign = 'center';
+                        previewCtx.textBaseline = 'middle';
+                        previewCtx.fillText(firstTitle, settings.title.x, settings.title.y);
+                    }
+                    
+                    // 后绘制姓名（上方）
+                    previewCtx.font = `${settings.name.size}px ${settings.name.family}`;
+                    previewCtx.fillStyle = settings.name.color;
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText(firstName, settings.name.x, settings.name.y);
+                    
+                    // 添加定位辅助线 - 姓名
+                    previewCtx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; // 姓名辅助线为半透明红色
+                    previewCtx.lineWidth = 1;
+                    // 垂直线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(settings.name.x, 0);
+                    previewCtx.lineTo(settings.name.x, previewCanvas.height);
+                    previewCtx.stroke();
+                    // 水平线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(0, settings.name.y);
+                    previewCtx.lineTo(previewCanvas.width, settings.name.y);
+                    previewCtx.stroke();
+                    
+                    // 添加定位辅助线 - 职称
+                    if (firstTitle) {
+                        previewCtx.strokeStyle = 'rgba(0, 0, 255, 0.5)'; // 职称辅助线为半透明蓝色
+                        // 垂直线
+                        previewCtx.beginPath();
+                        previewCtx.moveTo(settings.title.x, 0);
+                        previewCtx.lineTo(settings.title.x, previewCanvas.height);
+                        previewCtx.stroke();
+                        // 水平线
+                        previewCtx.beginPath();
+                        previewCtx.moveTo(0, settings.title.y);
+                        previewCtx.lineTo(previewCanvas.width, settings.title.y);
+                        previewCtx.stroke();
+                    }
+                    
+                    // 添加固定的居中辅助线（比文字辅助线粗，颜色区分开）
+                    previewCtx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // 居中辅助线为半透明绿色
+                    previewCtx.lineWidth = 2; // 居中辅助线更粗
+                    // 整个画面的垂直居中辅助线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(previewCanvas.width / 2, 0);
+                    previewCtx.lineTo(previewCanvas.width / 2, previewCanvas.height);
+                    previewCtx.stroke();
+                    // 整个画面的水平居中辅助线
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(0, previewCanvas.height / 2);
+                    previewCtx.lineTo(previewCanvas.width, previewCanvas.height / 2);
+                    previewCtx.stroke();
+                }
+            }
+
+            // 生成预览
+            generateBtn.addEventListener('click', () => {
+                statusMsg.textContent = '正在生成预览...';
+                
+                try {
+                        // 处理姓名，移除序号前缀
+                    const rawNames = nameList.value.split('\n').filter(name => name.trim());
+                    const names = rawNames.map(name => name.replace(/^\d+\.\s*/, '').trim()).filter(name => name);
+                    
+                    // 处理职称，移除序号前缀
+                    const rawTitles = titleList.value.split('\n');
+                    const processedTitles = rawTitles.map(title => title.replace(/^\d+\.\s*/, '').trim());
+                    
+                    // 确保职称列表与姓名列表长度一致，不足时补空字符串
+                    const titles = [];
+                    for (let i = 0; i < names.length; i++) {
+                        titles.push(processedTitles[i] || '');
+                    }
+                    
+                    // 确保生成数据被正确更新
+                    generatedData = [];
+                    for (let i = 0; i < names.length; i++) {
+                        generatedData.push({ name: names[i], title: titles[i] });
+                    }
+                    
+                    if (names.length === 0) {
+                        statusMsg.textContent = '请至少输入一个姓名。';
+                        return;
+                    }
+                    
+                    // 清空预览容器
+                    previewContainer.innerHTML = '';
+                    
+                    // 生成预览（最多12个）
+                    const previewNames = names.slice(0, 12);
+                    const previewTitles = titles.slice(0, 12);
+                    
+                    for (let i = 0; i < previewNames.length; i++) {
+                        const name = previewNames[i];
+                        const title = previewTitles[i] || '';
+                        
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        const settings = getSettings();
+                        
+                        if (settings.mode === 'symmetric') {
+                            // A4三折模式：使用适当的分辨率，避免过大的canvas导致下载失败
+                            canvas.width = 1050; // A4宽度的一半，保持清晰的同时避免过大
+                            canvas.height = 1485; // A4高度的一半，保持清晰的同时避免过大
+                        } else {
+                            // 单张模式：使用原始尺寸
+                            canvas.width = bgImage.width;
+                            canvas.height = bgImage.height;
+                        }
+                        
+                        // 绘制背景
+                        if (settings.mode === 'symmetric') {
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            const slotHeight = canvas.height / 3;
+                            const scaleFactor = canvas.width / A4_PIXEL_WIDTH;
+                            
+                            // 1. 顶部镜像背景
+                            ctx.save();
+                            const topCenterX = canvas.width / 2;
+                            const topCenterY = slotHeight / 2;
+                            ctx.translate(topCenterX, topCenterY);
+                            ctx.rotate(Math.PI);
+                            ctx.drawImage(bgImage, -topCenterX, -topCenterY, canvas.width, slotHeight);
+                            
+                            // 顶部镜像文字
+                            // 计算镜像文字位置
+                            const relNameX = (settings.name.x - A4_PIXEL_WIDTH / 2) * scaleFactor;
+                            const relNameY = (settings.name.y - A4_PIXEL_SLOT_HEIGHT / 2) * scaleFactor;
+                            const relTitleX = (settings.title.x - A4_PIXEL_WIDTH / 2) * scaleFactor;
+                            const relTitleY = (settings.title.y - A4_PIXEL_SLOT_HEIGHT / 2) * scaleFactor;
+                            
+                            // 先绘制镜像职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.weight} ${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, relTitleX, relTitleY);
+                            }
+                            
+                            // 后绘制镜像姓名（上方）
+                            ctx.font = `${settings.name.weight} ${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, relNameX, relNameY);
+                            ctx.restore();
+                            
+                            // 2. 中间正向背景
+                            ctx.drawImage(bgImage, 0, slotHeight, canvas.width, slotHeight);
+                            
+                            // 中间文字
+                            const actualNameX = settings.name.x * scaleFactor;
+                            const actualNameY = slotHeight + settings.name.y * scaleFactor;
+                            const actualTitleX = settings.title.x * scaleFactor;
+                            const actualTitleY = slotHeight + settings.title.y * scaleFactor;
+                        
+                        // 先绘制职称（下方）
+                        if (title) {
+                            ctx.font = `${settings.title.weight} ${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                            ctx.fillStyle = settings.title.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(title, actualTitleX, actualTitleY);
+                        }
+                        
+                        // 后绘制姓名（上方）
+                        ctx.font = `${settings.name.weight} ${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                        ctx.fillStyle = settings.name.color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(name, actualNameX, actualNameY);
+                        
+                        // 3. 底部空白白色底图（21X9.9CM）
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, slotHeight * 2, canvas.width, slotHeight);
+                        } else {
+                            // 单张模式
+                            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+                            
+                            // 先绘制职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.weight} ${settings.title.size}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, settings.title.x, settings.title.y);
+                            }
+                            
+                            // 后绘制姓名（上方）
+                            ctx.font = `${settings.name.weight} ${settings.name.size}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, settings.name.x, settings.name.y);
+                        }
+                        
+                        // 创建预览卡片
+                    const previewCard = document.createElement('div');
+                    previewCard.className = 'card-preview-wrapper relative rounded-md overflow-hidden border border-gray-100 bg-white hover:border border-gray-200 transition-shadow duration-300';
+                    
+                    const img = document.createElement('img');
+                    img.src = canvas.toDataURL(IMAGE_MIME_TYPE, 0.9);
+                    img.className = 'w-full h-auto';
+                    img.alt = `${name} - 预览`;
+                    
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-single-btn';
+                    downloadBtn.innerHTML = '↓';
+                    downloadBtn.title = `下载 ${name}`;
+                    downloadBtn.addEventListener('click', () => {
+                        const link = document.createElement('a');
+                        link.download = `${name}${settings.mode === 'symmetric' ? '-A4' : ''}.jpg`;
+                        link.href = canvas.toDataURL(IMAGE_MIME_TYPE, 0.9);
+                        link.click();
+                    });
+                    
+                    previewCard.appendChild(img);
+                    previewCard.appendChild(downloadBtn);
+                    previewContainer.appendChild(previewCard);
+                    }
+                    
+                    // 更新生成数据
+                    generatedData = [];
+                    for (let i = 0; i < names.length; i++) {
+                        generatedData.push({ name: names[i], title: titles[i] || '' });
+                    }
+                    
+                    // 启用下载按钮并更改样式为浅蓝色
+                    generateBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    generateBtn.classList.add('bg-blue-400', 'text-white');
+                    
+                    downloadZipBtn.disabled = false;
+                    downloadPdfBtn.disabled = false;
+                    downloadZipBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    downloadPdfBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    downloadZipBtn.classList.add('bg-blue-400', 'text-white');
+                    downloadPdfBtn.classList.add('bg-blue-400', 'text-white');
+                    downloadZipBtn.classList.remove('btn-disabled');
+                    downloadPdfBtn.classList.remove('btn-disabled');
+                    // 确保生成数据被正确更新
+                    generatedData = [];
+                    for (let i = 0; i < names.length; i++) {
+                        generatedData.push({ name: names[i], title: titles[i] || '' });
+                    }
+                    
+                    statusMsg.textContent = `生成完成，共 ${names.length} 个。`;
+                } catch (error) {
+                    console.error('生成预览失败:', error);
+                    statusMsg.textContent = '生成预览失败: ' + error.message;
+                }
+            });
+
+            // 批量下载ZIP
+            downloadZipBtn.addEventListener('click', async () => {
+                if (generatedData.length === 0) {
+                    statusMsg.textContent = '请先点击"生成预览"按钮生成内容。';
+                    return;
+                }
+                
+                statusMsg.textContent = '正在生成ZIP文件...';
+                
+                try {
+                    const zip = new JSZip();
+                    const settings = getSettings();
+                    
+                    for (let i = 0; i < generatedData.length; i++) {
+                        const { name, title } = generatedData[i];
+                        
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        if (settings.mode === 'symmetric') {
+                            // A4三折模式：使用适当的分辨率，避免过大的canvas导致下载失败
+                            canvas.width = 1050; // A4宽度的一半，保持清晰的同时避免过大
+                            canvas.height = 1485; // A4高度的一半，保持清晰的同时避免过大
+                        } else {
+                            // 单张模式：使用原始尺寸
+                            canvas.width = bgImage.width;
+                            canvas.height = bgImage.height;
+                        }
+                        
+                        // 绘制背景
+                        if (settings.mode === 'symmetric') {
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            const slotHeight = canvas.height / 3;
+                            const scaleFactor = canvas.width / A4_PIXEL_WIDTH;
+                            
+                            // 1. 顶部镜像背景
+                            ctx.save();
+                            const topCenterX = canvas.width / 2;
+                            const topCenterY = slotHeight / 2;
+                            ctx.translate(topCenterX, topCenterY);
+                            ctx.rotate(Math.PI);
+                            ctx.drawImage(bgImage, -topCenterX, -topCenterY, canvas.width, slotHeight);
+                            
+                            // 顶部镜像文字
+                            const relNameX = (settings.name.x - A4_PIXEL_WIDTH / 2) * scaleFactor;
+                            const relNameY = (settings.name.y - A4_PIXEL_SLOT_HEIGHT / 2) * scaleFactor;
+                            const relTitleX = (settings.title.x - A4_PIXEL_WIDTH / 2) * scaleFactor;
+                            const relTitleY = (settings.title.y - A4_PIXEL_SLOT_HEIGHT / 2) * scaleFactor;
+                            
+                            // 先绘制镜像职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, relTitleX, relTitleY);
+                            }
+                            
+                            // 后绘制镜像姓名（上方）
+                            ctx.font = `${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, relNameX, relNameY);
+                            ctx.restore();
+                            
+                            // 2. 中间正向背景
+                            ctx.drawImage(bgImage, 0, slotHeight, canvas.width, slotHeight);
+                            
+                            // 中间文字
+                            const actualNameX = settings.name.x * scaleFactor;
+                            const actualNameY = slotHeight + settings.name.y * scaleFactor;
+                            const actualTitleX = settings.title.x * scaleFactor;
+                            const actualTitleY = slotHeight + settings.title.y * scaleFactor;
+                            
+                            // 先绘制职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, actualTitleX, actualTitleY);
+                            }
+                            
+                            // 后绘制姓名（上方）
+                            ctx.font = `${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, actualNameX, actualNameY);
+                            
+                            // 3. 底部空白白色底图（21X9.9CM）
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, slotHeight * 2, canvas.width, slotHeight);
+                        } else {
+                            // 单张模式
+                            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+                            
+                            // 先绘制职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.size}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, settings.title.x, settings.title.y);
+                            }
+                            
+                            // 后绘制姓名（上方）
+                            ctx.font = `${settings.name.size}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, settings.name.x, settings.name.y);
+                        }
+                        
+                        // 添加到ZIP
+                        const fileName = `${name}${settings.mode === 'symmetric' ? '-A4' : ''}.jpg`;
+                        zip.file(fileName, canvas.toDataURL(IMAGE_MIME_TYPE, 0.9).split(',')[1], { base64: true });
+                    }
+                    
+                    // 生成并下载ZIP
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = `桌签_${new Date().toISOString().slice(0, 10)}.zip`;
+                    link.click();
+                    
+                    statusMsg.textContent = `ZIP文件已生成，包含 ${generatedData.length} 个文件。`;
+                } catch (error) {
+                    console.error('生成ZIP失败:', error);
+                    statusMsg.textContent = '生成ZIP失败: ' + error.message;
+                }
+            });
+
+            // 批量下载PDF - 与预览和ZIP保持一致的输出
+            downloadPdfBtn.addEventListener('click', async () => {
+                if (generatedData.length === 0) {
+                    statusMsg.textContent = '请先点击"生成预览"按钮生成内容。';
+                    return;
+                }
+                
+                statusMsg.textContent = '正在生成PDF文件...';
+                
+                try {
+                    const { jsPDF } = window.jspdf;
+                    
+                    // 获取设置
+                    const settings = getSettings();
+                    
+                    // 创建PDF实例
+                    const pdf = new jsPDF();
+                    
+                    // 复用Canvas对象，减少资源消耗
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 预计算常用值，避免重复计算
+                    const isSymmetric = settings.mode === 'symmetric';
+                    let canvasWidth, canvasHeight, slotHeight, scaleFactor, aspectRatio;
+                    
+                    if (isSymmetric) {
+                        // A4三折模式：使用与预览和ZIP一致的分辨率
+                        canvasWidth = 1050; // A4宽度的一半，与预览保持一致
+                        canvasHeight = 1485; // A4高度的一半，与预览保持一致
+                        canvas.width = canvasWidth;
+                        canvas.height = canvasHeight;
+                        slotHeight = canvasHeight / 3;
+                        scaleFactor = canvasWidth / A4_PIXEL_WIDTH;
+                    } else {
+                        // 单张模式：使用原始尺寸，与预览和ZIP保持一致
+                        canvasWidth = bgImage.width;
+                        canvasHeight = bgImage.height;
+                        canvas.width = canvasWidth;
+                        canvas.height = canvasHeight;
+                        aspectRatio = canvasWidth / canvasHeight;
+                        scaleFactor = 1; // 单张模式不缩放，使用原始尺寸
+                    }
+                    
+                    // 遍历生成的数据
+                    for (let i = 0; i < generatedData.length; i++) {
+                        const { name, title } = generatedData[i];
+                        
+                        // 每张图片占一页
+                        if (i > 0) {
+                            pdf.addPage();
+                        }
+                        
+                        // 快速清空Canvas
+                        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                        
+                        // 绘制背景
+                        if (isSymmetric) {
+                            // A4三折模式
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                            
+                            // 1. 顶部镜像背景和文字
+                            ctx.save();
+                            const topCenterX = canvasWidth / 2;
+                            const topCenterY = slotHeight / 2;
+                            ctx.translate(topCenterX, topCenterY);
+                            ctx.rotate(Math.PI);
+                            
+                            // 绘制顶部背景
+                            ctx.drawImage(bgImage, -topCenterX, -topCenterY, canvasWidth, slotHeight);
+                            
+                            // 顶部镜像文字
+                            const relNameX = (settings.name.x - A4_PIXEL_WIDTH / 2) * scaleFactor;
+                            const relNameY = (settings.name.y - A4_PIXEL_SLOT_HEIGHT / 2) * scaleFactor;
+                            const relTitleX = (settings.title.x - A4_PIXEL_WIDTH / 2) * scaleFactor;
+                            const relTitleY = (settings.title.y - A4_PIXEL_SLOT_HEIGHT / 2) * scaleFactor;
+                            
+                            // 先绘制镜像职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, relTitleX, relTitleY);
+                            }
+                            
+                            // 后绘制镜像姓名（上方）
+                            ctx.font = `${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, relNameX, relNameY);
+                            ctx.restore();
+                            
+                            // 2. 中间正向背景和文字
+                            ctx.drawImage(bgImage, 0, slotHeight, canvasWidth, slotHeight);
+                            
+                            const actualNameX = settings.name.x * scaleFactor;
+                            const actualNameY = slotHeight + settings.name.y * scaleFactor;
+                            const actualTitleX = settings.title.x * scaleFactor;
+                            const actualTitleY = slotHeight + settings.title.y * scaleFactor;
+                        
+                            // 先绘制职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, actualTitleX, actualTitleY);
+                            }
+                            
+                            // 后绘制姓名（上方）
+                            ctx.font = `${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, actualNameX, actualNameY);
+                            
+                            // 3. 底部空白白色底图（21X9.9CM）
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, slotHeight * 2, canvasWidth, slotHeight);
+                        } else {
+                            // 单张模式：快速绘制
+                            ctx.drawImage(bgImage, 0, 0, canvasWidth, canvasHeight);
+                            
+                            // 先绘制职称（下方）
+                            if (title) {
+                                ctx.font = `${settings.title.size * scaleFactor}px ${settings.title.family}`;
+                                ctx.fillStyle = settings.title.color;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(title, settings.title.x * scaleFactor, settings.title.y * scaleFactor);
+                            }
+                            
+                            // 后绘制姓名（上方）
+                            ctx.font = `${settings.name.size * scaleFactor}px ${settings.name.family}`;
+                            ctx.fillStyle = settings.name.color;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(name, settings.name.x * scaleFactor, settings.name.y * scaleFactor);
+                        }
+                        
+                        // 使用toDataURL与预览和ZIP保持一致，确保输出完全相同
+                        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                        
+                        if (isSymmetric) {
+                            // A4三折模式：使用A4尺寸
+                            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        } else {
+                            // 单张模式：保持原始比例
+                            let pdfWidth, pdfHeight;
+                            if (aspectRatio > 1) {
+                                // 横版：以宽度为基准
+                                pdfWidth = 210; // A4宽度
+                                pdfHeight = 210 / aspectRatio;
+                            } else {
+                                // 竖版：以高度为基准
+                                pdfHeight = 297; // A4高度
+                                pdfWidth = 297 * aspectRatio;
+                            }
+                            
+                            // 居中放置
+                            const x = (210 - pdfWidth) / 2;
+                            const y = (297 - pdfHeight) / 2;
+                            
+                            // 添加图片，使用默认模式确保质量一致
+                            pdf.addImage(imgData, 'JPEG', x, y, pdfWidth, pdfHeight);
+                        }
+                    }
+                    
+                    // 保存PDF，使用与其他方式一致的处理
+                    const pdfBlob = pdf.output('blob');
+                    
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(pdfBlob);
+                    link.download = `桌签_${new Date().toISOString().slice(0, 10)}.pdf`;
+                    link.click();
+                    
+                    // 释放URL对象
+                    URL.revokeObjectURL(link.href);
+                    
+                    statusMsg.textContent = `PDF文件已生成，包含 ${generatedData.length} 个页面。`;
+                } catch (error) {
+                    console.error('生成PDF失败:', error);
+                    statusMsg.textContent = '生成PDF失败: ' + error.message;
+                    console.error('PDF生成详细错误:', error.stack);
+                }
+            });
+
+            // 模式选择切换
+            document.querySelectorAll('input[name="generation-mode"]').forEach(radio => {
+                radio.addEventListener('change', resizeCanvasAndRedraw);
+            });
+            
+            // 登录注册功能已移除，仅保留必要的空函数和null检查以避免错误
+            function updateUserUI() {
+                // 已移除登录注册功能，此函数为空
+            }
+            
+            // 初始调用以避免错误
+            updateUserUI();
+            
+            // 示意图模态框
+            schematicSingleBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止触发label的点击事件
+                document.getElementById('modal-title').textContent = '单张模式示意图';
+                document.getElementById('modal-image').src = 'jpg-1.jpg';
+                document.getElementById('modal-caption').textContent = '单张模式下，直接按原图尺寸生成';
+                schematicModal.style.display = 'flex';
+            });
+            
+            schematicSymmetricBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止触发label的点击事件
+                document.getElementById('modal-title').textContent = 'A4三折模式示意图';
+                document.getElementById('modal-image').src = 'jpg-2.jpg';
+                document.getElementById('modal-caption').textContent = 'A4三折模式下，自动合成A4页面';
+                schematicModal.style.display = 'flex';
+            });
+            
+            // 使用教程按钮事件监听
+            tutorialBtn.addEventListener('click', () => {
+                document.getElementById('modal-title').textContent = '使用教程';
+                document.getElementById('modal-image').src = 'https://via.placeholder.com/600x400?text=使用教程示意图';
+                document.getElementById('modal-caption').textContent = '桌签生成工具使用教程，后续会替换为正式图片';
+                schematicModal.style.display = 'flex';
+            });
+            
+            closeModalBtn.addEventListener('click', () => {
+                schematicModal.style.display = 'none';
+            });
+            
+            schematicModal.addEventListener('click', (e) => {
+                if (e.target === schematicModal) {
+                    schematicModal.style.display = 'none';
+                }
+            });
+
+            // 输入框变化时重新绘制预览
+            [fontSizeInput, fontColorInput, fontFamilyInput, posXInput, posYInput, 
+             titleFontSizeInput, titleFontColorInput, titleFontFamilyInput, 
+             titlePosXInput, titlePosYInput].forEach(input => {
+                input.addEventListener('input', generatePreview);
+            });
+
+            // 名单变化时重新绘制预览
+            [nameList, titleList].forEach(textarea => {
+                textarea.addEventListener('input', generatePreview);
+            });
+
+            // 字体下拉列表功能
+            document.querySelectorAll('.font-select-container').forEach(container => {
+                const input = container.querySelector('input');
+                const toggleBtn = container.querySelector('.font-toggle-btn');
+                const dropdown = container.querySelector('.font-dropdown');
+                const fontItems = container.querySelectorAll('.font-item');
+
+                // 点击按钮切换下拉列表显示状态
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('hidden');
+                });
+
+                // 点击输入框显示下拉列表
+                input.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.remove('hidden');
+                });
+
+                // 点击字体项选择字体
+                fontItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const fontName = item.textContent;
+                        input.value = fontName;
+                        dropdown.classList.add('hidden');
+                        generatePreview(); // 选择字体后重新生成预览
+                    });
+                });
+            });
+
+            // 点击页面其他地方关闭下拉列表
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.font-dropdown').forEach(dropdown => {
+                    dropdown.classList.add('hidden');
+                });
+            });
+        });
+    </script>
+<!-- 底部版权信息 -->
+        <div class="mt-10 bg-white py-6">
+            <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-4">
+                <!-- 微信图标 -->
+                <button id="wechat-btn" class="hover:opacity-80 transition-opacity duration-300">
+                    <img src="weixin.png" alt="微信图标" class="w-12 h-12">
+                </button>
+                
+                <!-- 版权说明 -->
+                <p class="text-sm text-gray-600 text-center">Copyright ©️ 自由蓝设计工作室</p>
+            </div>
+        </div>
+        
+        <!-- 微信二维码模态框 -->
+        <div id="wechat-modal" class="modal-overlay">
+            <div class="bg-white p-5 rounded-lg shadow-xl max-w-sm w-full mx-4 relative">
+                <button id="close-wechat-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold p-1">&times;</button>
+                <h3 class="text-lg font-bold mb-4 text-center">微信二维码</h3>
+                <!-- 微信二维码图片 -->
+                <img src="wechat.jpg" alt="微信二维码" class="w-full h-auto rounded-lg border border-gray-100">
+                <p class="text-xs text-gray-500 mt-2 text-center">扫码添加微信</p>
+            </div>
+        </div>
+        
+        <script>
+            // 微信二维码模态框功能
+            const wechatBtn = document.getElementById('wechat-btn');
+            const wechatModal = document.getElementById('wechat-modal');
+            const closeWechatModal = document.getElementById('close-wechat-modal');
+            
+            // 显示微信二维码模态框
+            wechatBtn.addEventListener('click', () => {
+                wechatModal.style.display = 'flex';
+            });
+            
+            // 关闭微信二维码模态框
+            closeWechatModal.addEventListener('click', () => {
+                wechatModal.style.display = 'none';
+            });
+            
+            // 点击模态框外部关闭模态框
+            window.addEventListener('click', (e) => {
+                if (e.target === wechatModal) {
+                    wechatModal.style.display = 'none';
+                }
+            });
+        </script>
+    </body>
+</html>
